@@ -10,10 +10,19 @@ if (-not $status) {
 # Extract changed file names to build a descriptive commit message
 $changedFiles = $status | ForEach-Object {
     $line = $_.Trim()
-    $parts = $line -split '\s+', 2
-    if ($parts.Count -eq 2) {
-        $filePath = $parts[1]
-        Get-Item -Path $filePath -ErrorAction SilentlyContinue
+    # Check for rename status: R  "oldpath" -> "newpath"
+    if ($line -match '^R\s+(.+)\s+->\s+(.+)$') {
+        $filePath = $Matches[2]
+    } else {
+        $filePath = $line -replace '^[MADRC?U! ]+\s+', ''
+    }
+    
+    # Strip wrapping quotes if present
+    $filePath = $filePath -replace '^"|"$', ''
+    
+    if ($filePath) {
+        # Use -LiteralPath to handle wildcards and special characters like ! and & in filenames
+        Get-Item -LiteralPath $filePath -ErrorAction SilentlyContinue
     }
 } | Where-Object { $_ -ne $null -and $_.Attributes -ne 'Directory' }
 
